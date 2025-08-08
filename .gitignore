@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.DS_Store
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Artifacts
+reports/
+*.zip
