@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+try:
+    from datetime import UTC  # Python 3.11+
+except ImportError:
+    UTC = timezone.utc
 from pathlib import Path
 from typing import Any, Dict
 
