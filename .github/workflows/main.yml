@@ -1,0 +1,45 @@
+name: QLib Codex Agent Automation
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+    inputs:
+      experiment_type:
+        description: 'Type of experiment to run'
+        required: true
+        default: 'full_pipeline'
+
+jobs:
+  qlib-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+
+      - name: Install QLib and dependencies
+        run: |
+          pip install pyqlib
+          pip install -r requirements.txt
+
+      - name: Download Data
+        run: ./scripts/setup.sh
+
+      - name: Initialize Codex Agents
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python agents/orchestrator.py --config configs/base_config.yaml --initialize
+
+      - name: Execute QLib Workflow
+        run: python agents/orchestrator.py --config configs/base_config.yaml --execute-full-pipeline
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: qlib-results
+          path: results/
