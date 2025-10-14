@@ -42,7 +42,7 @@ jobs:
         python agents/orchestrator.py --config configs/base_config.yaml --execute-full-pipeline
 
     - name: Upload Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: qlib-results
         path: results/
