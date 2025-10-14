@@ -188,7 +188,9 @@ Useful management commands:
 
 ## GitHub Actions CI/CD
 
-Workflow file: `.github/workflows/qlib-automation.yml`
+Workflow file:See also [artifact migration notes](docs/artifact_migration.md) for v4 behavior.
+
+ `.github/workflows/qlib-automation.yml`
 
 1. Set the `OPENAI_API_KEY` secret in the repository settings (`Settings → Secrets → Actions`).
 2. Optionally customize schedule or add push triggers.
