@@ -23,21 +23,25 @@ jobs:
         python-version: '3.8'
 
     - name: Install QLib and dependencies
+      working-directory: qlib-agent-framework
       run: |
         pip install pyqlib
         pip install -r requirements.txt
 
     - name: Download Data
+      working-directory: qlib-agent-framework
       run: |
         ./scripts/setup.sh
 
     - name: Initialize Codex Agents
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      working-directory: qlib-agent-framework
       run: |
         python agents/orchestrator.py --config configs/base_config.yaml --initialize
 
     - name: Execute QLib Workflow
+      working-directory: qlib-agent-framework
       run: |
         python agents/orchestrator.py --config configs/base_config.yaml --execute-full-pipeline
 
@@ -45,6 +49,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: qlib-results
-        path: results/
+        path: qlib-agent-framework/results/
         overwrite: true
         include-hidden-files: true
