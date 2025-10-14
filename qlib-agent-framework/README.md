@@ -204,6 +204,10 @@ The CI pipeline:
 
 ---
 
+## Advanced Guides
+
+- [Nested Decision Execution & Formulaic Alpha Guide](docs/nested_decision_workflow.md)
+
 ## Troubleshooting & Tips
 
 - **Dataset not found:** ensure `~/.qlib/qlib_data/cn_data` exists; re-run `scripts/setup.sh`.
