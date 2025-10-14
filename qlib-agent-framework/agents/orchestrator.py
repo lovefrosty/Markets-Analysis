@@ -81,10 +81,12 @@ class QLibOrchestrator:
         }
         data_summary = await data_agent.prepare_data(data_config)
 
-        model_tasks = [
-            model_agent.train_model(model_name, model_config, data_agent.dataset)
-            for model_name, model_config in self.config.get("models", {}).items()
-        ]
+        model_tasks = []
+        for model_name, model_config in self.config.get("models", {}).items():
+            if not model_config.get("enabled", True):
+                logging.info("Skipping model %s because enabled flag is false", model_name)
+                continue
+            model_tasks.append(model_agent.train_model(model_name, model_config, data_agent.dataset))
         model_results = await asyncio.gather(*model_tasks)
 
         strategies = self.config.get("strategies", {})

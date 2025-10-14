@@ -85,6 +85,7 @@ data_handler_config: &data_handler_config
 
 models:
   lightgbm:
+    enabled: true
     class: "LGBModel"
     module_path: "qlib.contrib.model.gbdt"
     kwargs:
@@ -99,6 +100,7 @@ models:
       num_threads: 20
 
   pytorch_mlp:
+    enabled: false
     class: "DNNModelPytorch"
     module_path: "qlib.contrib.model.pytorch_nn"
     kwargs:
@@ -110,6 +112,7 @@ models:
       dropout: 0.3
 
   lstm:
+    enabled: false
     class: "LSTMModel"
     module_path: "qlib.contrib.model.pytorch_lstm"
     kwargs:

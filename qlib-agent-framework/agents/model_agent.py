@@ -33,6 +33,11 @@ class ModelAgent(BaseAgent):
         model_config: Dict[str, Any],
         dataset: DatasetH,
     ) -> Dict[str, Any]:
+        if not model_config.get("enabled", True):
+            self.logger.info("Model %s disabled via configuration; skipping.", model_name)
+            result = {"model": model_name, "status": "skipped", "reason": "disabled"}
+            self.trained_models[model_name] = result
+            return result
         if dataset is None:
             raise ValueError("Dataset must be prepared before training models.")
 
