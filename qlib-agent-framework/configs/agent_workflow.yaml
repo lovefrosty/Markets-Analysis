@@ -1,0 +1,131 @@
+agent_workflow:
+  description: |
+    End-to-end QLib workflow for training, prediction, backtest, evaluation and orchestration across agents.
+    Follows modular agent structure: DataAgent, ModelAgent, StrategyAgent, EvaluationAgent, Orchestrator.
+    Logs all input/output artifacts and handles optional features.
+
+  initialization:
+    qlib_init: true
+    data_provider_dir: qlib_data/cn_data
+    market: "csi300"
+    benchmark: "SH000300"
+
+  data_agent:
+    handler:
+      class: "Alpha158"
+      module_path: "qlib.contrib.data.handler"
+      kwargs:
+        start_time: "2008-01-01"
+        end_time: "2020-08-01"
+        fit_start_time: "2008-01-01"
+        fit_end_time: "2014-12-31"
+        instruments: "csi300"
+    dataset:
+      class: "DatasetH"
+      module_path: "qlib.data.dataset"
+      kwargs:
+        handler: !ref data_agent.handler
+        segments:
+          train: ["2008-01-01", "2014-12-31"]
+          valid: ["2015-01-01", "2016-12-31"]
+          test: ["2017-01-01", "2020-08-01"]
+    output: "results/data_agent_data_summary.yaml"
+
+  model_agent:
+    models:
+      - name: "LightGBM"
+        enabled: true
+        class: "LGBModel"
+        module_path: "qlib.contrib.model.gbdt"
+        kwargs:
+          loss: "mse"
+          colsample_bytree: 0.8879
+          learning_rate: 0.0421
+          subsample: 0.8789
+          lambda_l1: 205.6999
+          lambda_l2: 580.9768
+          max_depth: 8
+          num_leaves: 210
+          num_threads: 20
+      - name: "LSTM"
+        enabled: false  # torch not installed in current environment; install torch to enable
+        class: "LSTM"
+        module_path: "qlib.contrib.model.pytorch_lstm"
+        kwargs: {}
+    fit_method: "fit"
+    predict_method: "predict"
+    skip_missing_deps: true
+    output_format: "parquet"
+    outputs:
+      prediction: "results/prediction_{model}_{segment}.parquet"
+      metrics: "results/metrics_{model}_{segment}.yaml"
+
+  strategy_agent:
+    strategies:
+      - name: "TopkDropout"
+        enabled: true
+        class: "TopkDropoutStrategy"
+        module_path: "qlib.contrib.strategy"
+        config:
+          report_dir: "results/strategy_report"
+          indicator_dir: "results/strategy_indicators"
+          risk_metrics: true
+          cost: 0.001
+      - name: "EnhancedIndexing"
+        enabled: false  # riskmodel_root not provided; set to true and supply path to enable
+        class: "EnhancedIndexingStrategy"
+        module_path: "qlib.contrib.strategy.signal_strategy"
+        config:
+          riskmodel_root: null
+          report_dir: "results/enhanced_indexing_report"
+          indicator_dir: "results/enhanced_indexing_indicators"
+          skip_if_missing: true
+    input_predictions: "results/prediction_{top_model}_test.parquet"
+    output_reports: "results/strategy_report_{strategy}.yaml"
+
+  evaluation_agent:
+    select_best: "IC"
+    metrics_to_compare:
+      - "annualized_excess_return"
+      - "information_ratio"
+      - "cost_adjusted_return"
+    summarize: true
+    input_reports:
+      - "results/strategy_report_TopkDropout.yaml"
+      - "results/strategy_report_EnhancedIndexing.yaml"
+    output_summary: "results/evaluation_agent_evaluation_summary.yaml"
+
+  orchestrator:
+    config_path: "configs/base_config.yaml"
+    agents_sequence:
+      - data_agent
+      - model_agent
+      - strategy_agent
+      - evaluation_agent
+    auto_select_best_model: true
+    combine_results: "results/workflow_results.yaml"
+    log_duplicates: true
+    handle_skipped: "record_reason"
+    output: "results/workflow_results.yaml"
+
+  advanced:
+    dependencies:
+      torch:
+        required_for_models: ["LSTM"]
+        install_instr: "pip install torch"
+      qlib:
+        version: ">=0.9.6"
+    extensions:
+      custom_model:
+        integration_guide: "https://qlib.readthedocs.io/en/latest/start/integration.html"
+        params: {}
+      riskmodel_root:
+        enable_enhanced_indexing: true
+        integration_guide: "https://qlib.readthedocs.io/en/latest/component/strategy.html"
+
+  notes: |
+    - Artifacts include predictions, reports, summaries, and config logs.
+    - Duplicate/skipped entries should be clearly marked with reasons.
+    - To unlock LSTM/PyTorch support, ensure `torch` is installed.
+    - To run EnhancedIndexing, provide a valid `riskmodel_root` as per the QLib documentation.
+    - Custom models must be registered in configs with their class/module_path.

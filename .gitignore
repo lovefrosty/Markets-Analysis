@@ -17,3 +17,11 @@ __pycache__/
 .venv/
 .DS_Store
 reports/
+
+# QLib artifacts
+qlib-agent-framework/data/
+qlib-agent-framework/results/
+qlib-agent-framework/mlruns/
+qlib-agent-framework/Users/
+mlruns/
+data/

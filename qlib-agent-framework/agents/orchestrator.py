@@ -9,7 +9,7 @@ import logging
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Optional, Type
 
 import yaml
 
@@ -71,24 +71,32 @@ class QLibOrchestrator:
 
         dataset_config = self.config["dataset"]["kwargs"]
         data_config = {
-            "provider_uri": self.config["qlib_init"]["provider_uri"],
-            "segments": dataset_config.get("segments"),
-            "label": self.config["data_handler_config"].get("label"),
-            "infer_processors": self.config["data_handler_config"].get("infer_processors", []),
+            "qlib_init": self.config.get("qlib_init", {}),
+            "handler": dataset_config.get("handler"),
+            "dataset": self.config.get("dataset"),
         }
         data_summary = await data_agent.prepare_data(data_config)
 
         model_tasks = [
-            model_agent.train_model(model_name, model_config)
+            model_agent.train_model(model_name, model_config, data_agent.dataset)
             for model_name, model_config in self.config.get("models", {}).items()
         ]
         model_results = await asyncio.gather(*model_tasks)
 
         strategies = self.config.get("strategies", {})
-        strategy_results = await strategy_agent.implement_strategies(strategies)
+        best_model_name = self._select_best_model(model_results)
+        prediction_df = model_agent.predictions.get(best_model_name)
+        if prediction_df is None:
+            raise RuntimeError("No predictions available for strategy evaluation.")
+        port_analysis_cfg = self.config.get("port_analysis_config", {})
+        strategy_results = await strategy_agent.implement_strategies(
+            strategies,
+            prediction_df,
+            data_agent.dataset,
+            port_analysis_cfg,
+        )
 
-        port_analysis_config = self.config.get("port_analysis_config", {})
-        evaluation_results = await evaluation_agent.analyze_performance(port_analysis_config)
+        evaluation_results = await evaluation_agent.analyze_performance(strategy_results)
 
         final_results = {
             "data": data_summary,
@@ -134,6 +142,25 @@ class QLibOrchestrator:
         self._update_state(status="error", error=str(error))
 
     # Internal helpers -----------------------------------------------------------------
+
+    @staticmethod
+    def _select_best_model(model_results: List[Dict[str, Any]]) -> str:
+        best_name: Optional[str] = None
+        best_metric = float("-inf")
+        for result in model_results:
+            metrics = result.get("metrics", {})
+            candidate = metrics.get("valid") or metrics.get("test") or metrics.get("train")
+            ic_value = candidate.get("ic") if candidate else None
+            if ic_value is not None and ic_value > best_metric:
+                best_metric = ic_value
+                best_name = result.get("model")
+        if best_name is None:
+            available = [res.get("model") for res in model_results if res.get("metrics")]
+            if available:
+                best_name = available[0]
+        if best_name is None:
+            raise RuntimeError("Unable to determine the best model for strategies.")
+        return best_name
 
     def _update_state(self, **updates: Any) -> None:
         self.state.update(updates)

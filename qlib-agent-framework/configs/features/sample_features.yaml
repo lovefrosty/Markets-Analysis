@@ -1,0 +1,14 @@
+# Example programmable feature configuration for DatasetH.
+feature_columns:
+  - name: "price_ref_1"
+    expression: "Ref($close, -1)"
+  - name: "volume_ema_20"
+    expression: "EMA($volume, 20)"
+  - name: "volatility_10"
+    expression: "Std($close, 10)"
+  - name: "alpha_custom"
+    expression: "Mean($close, 5) - EMA($close, 15)"
+
+label_columns:
+  - name: "future_return"
+    expression: "Ref($close, -2) / Ref($close, -1) - 1"

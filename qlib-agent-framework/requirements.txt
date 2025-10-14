@@ -1,0 +1,9 @@
+pyqlib
+numpy
+cython>=0.29
+lightgbm
+torch
+openai
+pyyaml
+pandas
+tqdm

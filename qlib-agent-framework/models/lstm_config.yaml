@@ -1,0 +1,12 @@
+# Sample configuration for QLib's PyTorch LSTM model.
+class: "LSTMModel"
+module_path: "qlib.contrib.model.pytorch_lstm"
+kwargs:
+  lr: 0.001
+  n_epochs: 50
+  input_size: 158        # match your feature dimension
+  hidden_size: 64
+  num_layers: 2
+  dropout: 0.1
+  batch_size: 256
+  device: "cpu"          # switch to "cuda" when GPU is available

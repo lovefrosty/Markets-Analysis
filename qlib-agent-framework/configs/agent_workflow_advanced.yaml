@@ -1,0 +1,45 @@
+agent_workflow:
+  models:
+    lstm:
+      enabled: true            # Enable LSTM since torch is now available
+      dependency: torch
+      config_path: ./models/lstm_config.yaml
+      notes: "Requires torch >= version 1.0"
+
+    enhanced_indexing:
+      enabled: true            # Enable advanced indexing, riskmodel_root available
+      riskmodel_root: ./riskmodel_root
+      config_path: ./models/eindexing_config.yaml
+      notes: "Activate only when risk models are ready"
+
+    custom_model:
+      enabled: false           # Integrate your custom model when needed
+      module_path: ./models/custom_model.py
+      config_path: ./models/custom_model_config.yaml
+
+  features:
+    default_features:
+      - Open
+      - Close
+      - High
+      - Low
+      - Volume
+    custom_features:
+      enabled: false
+      list:
+        - custom_formula1
+        - custom_formula2
+
+  artifacts:
+    output_dir: ./artifacts
+    logs_dir: ./logs
+
+  advanced:
+    dependencies:
+      - torch>=1.0
+      - numpy>=1.18
+      - pandas>=1.1
+      - qlib==0.9.6.99
+    extensions:
+      custom_model: ./docs/advanced/extensions/custom_model.md
+    notes: "Toggle flags and paths as you install or remove dependencies"

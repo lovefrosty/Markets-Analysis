@@ -1,0 +1,26 @@
+# Configuration snippet for Enhanced Indexing strategy integration.
+strategy:
+  class: "EnhancedIndexingStrategy"
+  module_path: "qlib.contrib.strategy.signal_strategy"
+  kwargs:
+    riskmodel_root: "./riskmodel_root"  # update to your actual risk model directory
+    signal: "<PRED>"
+    risk_budget: 0.05
+    target_return: 0.15
+executor:
+  class: "SimulatorExecutor"
+  module_path: "qlib.backtest.executor"
+  kwargs:
+    time_per_step: "day"
+    generate_portfolio_metrics: true
+backtest:
+  start_time: "2018-01-01"
+  end_time: "2020-08-01"
+  benchmark: "SH000300"
+  account: 100000000
+  exchange_kwargs:
+    limit_threshold: 0.095
+    deal_price: "close"
+    open_cost: 0.0005
+    close_cost: 0.0015
+    min_cost: 5

@@ -1,0 +1,270 @@
+# ===== CODEX AGENT ORCHESTRATION YAML =====
+agent_config:
+  orchestrator:
+    name: "qlib_master_orchestrator"
+    version: "1.0"
+    max_iterations: 10
+    parallel_agents: 4
+    error_retry_limit: 3
+
+  agents:
+    - name: "data_agent"
+      role: "data_preparation"
+      priority: 1
+      capabilities:
+        - "download_market_data"
+        - "feature_engineering"
+        - "data_validation"
+        - "preprocessing"
+
+    - name: "model_agent"
+      role: "model_training"
+      priority: 2
+      capabilities:
+        - "model_selection"
+        - "hyperparameter_tuning"
+        - "training_execution"
+        - "model_validation"
+
+    - name: "strategy_agent"
+      role: "strategy_implementation"
+      priority: 3
+      capabilities:
+        - "portfolio_construction"
+        - "risk_management"
+        - "execution_logic"
+        - "performance_analysis"
+
+    - name: "evaluation_agent"
+      role: "results_analysis"
+      priority: 4
+      capabilities:
+        - "backtest_analysis"
+        - "performance_metrics"
+        - "report_generation"
+        - "optimization_suggestions"
+
+# ===== QLIB WORKFLOW CONFIGURATION =====
+qlib_init:
+  provider_uri: "~/.qlib/qlib_data/cn_data"
+  region: &region "cn"
+  market: &market "csi300"
+  benchmark: &benchmark "SH000300"
+  kernels: 4
+
+data_handler_config: &data_handler_config
+  start_time: "2018-01-01"
+  end_time: "2024-12-31"
+  fit_start_time: "2018-01-01"
+  fit_end_time: "2022-12-31"
+  instruments: *market
+
+  infer_processors:
+    - class: "RobustZScoreNorm"
+      module_path: "qlib.data.dataset.processor"
+      kwargs:
+        fields_group: "feature"
+        clip_outlier: true
+
+    - class: "Fillna"
+      module_path: "qlib.data.dataset.processor"
+      kwargs:
+        fields_group: "feature"
+        fill_value: 0
+
+  learn_processors:
+    - class: "DropnaLabel"
+      module_path: "qlib.data.dataset.processor"
+
+    - class: "CSRankNorm"
+      module_path: "qlib.data.dataset.processor"
+      kwargs:
+        fields_group: "label"
+
+  label: ["Ref($close, -2) / Ref($close, -1) - 1"]
+
+models:
+  lightgbm:
+    class: "LGBModel"
+    module_path: "qlib.contrib.model.gbdt"
+    kwargs:
+      loss: "mse"
+      colsample_bytree: 0.8879
+      learning_rate: 0.0421
+      subsample: 0.8789
+      lambda_l1: 205.6999
+      lambda_l2: 580.9768
+      max_depth: 8
+      num_leaves: 210
+      num_threads: 20
+
+  pytorch_mlp:
+    class: "DNNModelPytorch"
+    module_path: "qlib.contrib.model.pytorch_nn"
+    kwargs:
+      lr: 0.002
+      max_steps: 8000
+      batch_size: 2000
+      early_stop_rounds: 50
+      layers: [360, 128, 64, 32, 1]
+      dropout: 0.3
+
+  lstm:
+    class: "LSTMModel"
+    module_path: "qlib.contrib.model.pytorch_lstm"
+    kwargs:
+      lr: 0.001
+      n_epochs: 100
+      hidden_size: 64
+      num_layers: 2
+      dropout: 0.1
+
+strategies:
+  topk_dropout:
+    class: "TopkDropoutStrategy"
+    module_path: "qlib.contrib.strategy"
+    kwargs:
+      signal: "<PRED>"
+      topk: 50
+      n_drop: 5
+
+  enhanced_indexing:
+    class: "EnhancedIndexingStrategy"
+    module_path: "qlib.contrib.strategy.signal_strategy"
+    kwargs:
+      signal: "<PRED>"
+      risk_budget: 0.05
+      target_return: 0.15
+
+port_analysis_config: &port_analysis_config
+  strategy:
+    class: "TopkDropoutStrategy"
+    module_path: "qlib.contrib.strategy"
+    kwargs:
+      signal: "<PRED>"
+      topk: 50
+      n_drop: 5
+
+  backtest:
+    start_time: "2023-01-01"
+    end_time: "2024-12-31"
+    account: 100000000
+    benchmark: *benchmark
+    exchange_kwargs:
+      limit_threshold: 0.095
+      deal_price: "close"
+      open_cost: 0.0005
+      close_cost: 0.0015
+      min_cost: 5
+
+dataset:
+  class: "DatasetH"
+  module_path: "qlib.data.dataset"
+  kwargs:
+    handler:
+      class: "Alpha158"
+      module_path: "qlib.contrib.data.handler"
+      kwargs: *data_handler_config
+    segments:
+      train: ["2018-01-01", "2021-12-31"]
+      valid: ["2022-01-01", "2022-12-31"]
+      test: ["2023-01-01", "2024-12-31"]
+
+task:
+  model:
+    class: "LGBModel"
+    module_path: "qlib.contrib.model.gbdt"
+    kwargs:
+      loss: "mse"
+      colsample_bytree: 0.8879
+      learning_rate: 0.0421
+      subsample: 0.8789
+      lambda_l1: 205.6999
+      lambda_l2: 580.9768
+      max_depth: 8
+      num_leaves: 210
+      num_threads: 20
+
+  dataset:
+    class: "DatasetH"
+    module_path: "qlib.data.dataset"
+    kwargs:
+      handler:
+        class: "Alpha158"
+        module_path: "qlib.contrib.data.handler"
+        kwargs: *data_handler_config
+      segments:
+        train: ["2018-01-01", "2021-12-31"]
+        valid: ["2022-01-01", "2022-12-31"]
+        test: ["2023-01-01", "2024-12-31"]
+
+  record:
+    - class: "SignalRecord"
+      module_path: "qlib.workflow.record_temp"
+      kwargs: {}
+
+    - class: "PortAnaRecord"
+      module_path: "qlib.workflow.record_temp"
+      kwargs:
+        config: *port_analysis_config
+
+automation:
+  experiment_tracking: true
+  auto_hyperparameter_tuning: true
+  model_ensemble: true
+  performance_monitoring: true
+
+  optimization_targets:
+    - "sharpe_ratio"
+    - "information_ratio"
+    - "max_drawdown"
+    - "annual_return"
+
+  stopping_criteria:
+    max_runtime_hours: 24
+    target_sharpe_ratio: 2.0
+    max_iterations: 100
+
+codex_instructions:
+  primary_objective: "Maximize risk-adjusted returns through automated quantitative research workflow"
+
+  agent_workflows:
+    data_agent:
+      tasks:
+        - "Download and validate market data"
+        - "Generate Alpha158 features"
+        - "Perform data quality checks"
+        - "Create train/valid/test splits"
+
+    model_agent:
+      tasks:
+        - "Train LightGBM baseline model"
+        - "Implement neural network variants"
+        - "Perform hyperparameter optimization"
+        - "Validate model performance"
+
+    strategy_agent:
+      tasks:
+        - "Implement TopkDropout strategy"
+        - "Configure portfolio constraints"
+        - "Set up risk management rules"
+        - "Define rebalancing logic"
+
+    evaluation_agent:
+      tasks:
+        - "Run comprehensive backtests"
+        - "Calculate performance metrics"
+        - "Generate analysis reports"
+        - "Suggest optimization improvements"
+
+  error_handling:
+    - "Log all errors with timestamps"
+    - "Implement automatic retry logic"
+    - "Fallback to simpler configurations on failure"
+    - "Generate diagnostic reports"
+
+  collaboration_protocol:
+    - "Share intermediate results between agents"
+    - "Maintain shared state in results/ directory"
+    - "Use standardized logging format"
+    - "Implement checkpoint/resume functionality"
